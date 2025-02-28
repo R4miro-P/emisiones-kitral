@@ -1,0 +1,4 @@
+rasterio
+numpy
+pandas
+toml if sys.version_info < (3, 8)
