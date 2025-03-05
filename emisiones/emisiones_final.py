@@ -24,7 +24,8 @@ import pandas as pd
 #--------------------------------------------------------------------------------------------------------------------------------
 #se crea funcion que calcula sfb a partir de Ros.
 def surface_fuel_consumed_vectorized(fuels, ros):
-    """Computes the surface fraction consumed, given a fuel type and rate of spread. It uses a diferent formula for each of
+    """
+    Computes the surface fraction consumed, given a fuel type and rate of spread. It uses a diferent formula for each of
     the four fuel categories in Kitral: Grass, Shrubs, Trees and plantation. The function is vectorized, so it can process
     entire arrays of fuel types and ROS values at once.
     
@@ -33,7 +34,9 @@ def surface_fuel_consumed_vectorized(fuels, ros):
     - Ros: 2D array of rate of spread values (floats).
     
     Output:
-    - 2D array of surface fraction consumed values (floats)."""
+    - 2D array of surface fraction consumed values (floats).
+    
+    """
     
     #Calcula la fraccion de combustible consumido en superficie a partir de los raster de combustible y ROS
     
