@@ -274,7 +274,9 @@ def sum_raster_values(raster_path):
     - raster_path: Path to the ASCII grid file (float).
     
     Output:
-    - total_sum: sum of all valid pixel values in the ASCII grid file (float)."""
+    - total_sum: sum of all valid pixel values in the ASCII grid file (float).
+    
+    """
     
     #Suma los valores de cada pixel en un raster (ignora los nodata si estan masked).
     
@@ -379,6 +381,19 @@ input_folder = "/home/ramiro/Emisiones/50sim/SFB/"
 output_file = "/home/ramiro/Emisiones/50sim/cicatriz_total.asc" 
 
 def average_asc_files(input_folder, output_file):
+    """
+    Computes the per pixel average of all valid pixel values in a set of ASCII grids. It uses the rasters nodata value to ignore 
+    invalid pixels. The average is computed as the sum of al valid pixel values divided by the number of input files.
+    
+    Input:
+    - input_folder: Path to the folder containing the input ASCII grids.
+    
+    Output:
+    - output_file: Path to the output ASCII grid containing the per pixel average of all input grids.
+    
+    Raises: No. asc files found in the specified folder. if the input folder is empty or does not contain any .asc files.
+    
+    """
     # List all .asc files in the input folder.
     files = [f for f in os.listdir(input_folder) if f.endswith('.asc')]
     if not files:
@@ -430,8 +445,17 @@ import numpy as np
 
 def average_pixel_value_total(asc_file, bp_file):
     """
-    Computes the average value of all valid pixels in an Arc/Info ASCII Grid (ASC) file.
-    It uses the raster's nodata value to ignore invalid pixels.
+    Computes the average value of all valid pixels in an ASCII Grid (ASC) file.
+    It uses the raster's nodata value to ignore invalid pixels. It returns the average value of all valid pixels using the formula:
+    average = sim(pixel values)/nsims * nsims/#number of times the pixel was burned (1/Burn probability).
+
+    Inputs:
+    - asc_file: Path to the ASCII grid file (float) containing per pixel averages.
+    - bp_file: Path to the burn probability ASCII grid file (float).
+
+    Output:
+    - average: Average value of all valid pixels in the ASCII grid file (float).
+
     """
     with rasterio.open(asc_file) as src:
         # Read the first band as a masked array so that nodata values are ignored.
@@ -462,20 +486,20 @@ import pandas as pd
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def crown_fraction_burned(ros, CBH, FMC, CBD, H, fuel_load):
     """
-    Calcula la fracción quemada en copa (cfb) para cada píxel. Se realizan los cálculos de i0 y ros_crit 
-    solo en aquellos píxeles donde fuel_load es distinto de 0. La fórmula se aplica de forma elementwise y se 
-    retorna 0 en caso de que fuel_load sea 0 o si no se cumple la condición.
+    Calculates the crown fraction burned (cfb) for each pixel. The calculations for i0 and ros_crit are performed only on those 
+    pixels where fuel_load is not zero. The formula is applied elementwise and 
+    returns 0 if fuel_load is 0 or if the condition is not met.
+
+    Inputs:
+        - ros: Array of fire spread rate.
+        - CBH: Array of Crown Base Height.
+        - FMC: Scalar or array of Fuel Moisture Content.
+        - CBD: Array of Crown Bulk Density.
+        - H: Array or scalar for height (or another calibration variable).
+        - fuel_load: Array of fuel load.
     
-    Parámetros:
-      ros: Array de tasa de propagación del fuego.
-      CBH: Array de Crown Base Height.
-      FMC: Escalar o array de Fuel Moisture Content.
-      CBD: Array de Crown Bulk Density.
-      H: Array o escalar para la altura (u otra variable de calibración).
-      fuel_load: Array de carga de combustible.
-      
-    Retorna:
-      cfb: Array de la fracción quemada en copa para cada píxel.
+    Output:
+        - cfb: Array of the crown fraction burned for each pixel.
     """
     # Calcular i0 solo donde fuel_load es distinto de 0; de lo contrario, 0.
     i0 = np.where((fuel_load != 0) & (H != 0), 0.01 * CBH * (460 + 25.9 * FMC)**(1.5), 0)
@@ -496,19 +520,20 @@ def crown_fraction_burned(ros, CBH, FMC, CBD, H, fuel_load):
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def generate_crown_fraction_burned(ros_asc_path, cbh_raster, FMC, cbd_raster, h_raster, fuel_load_path, output_folder):
     """
-    Genera un raster ASC para la fracción quemada en copa (CFB) usando un archivo ROS ASC.
-    Utiliza rasters fijos para CBH, CBD, H y la carga de combustible, y escribe el resultado en output_folder.
-    Retorna el path del archivo ASC generado.
-    
-    Parámetros:
-      ros_asc_path: Path al archivo ROS ASC.
-      cbh_raster: Path al raster ASC de CBH.
-      FMC: Escalar (o array) de Fuel Moisture Content.
-      cbd_raster: Path al raster ASC de CBD.
-      h_raster: Path al raster ASC de H.
-      fuel_load_path: Path al raster ASC de la carga de combustible (cfl).
-      output_folder: Carpeta de salida para el raster CFB.
+    Generates an ASC raster for the crown fraction burned (CFB) using a ROS ASC file.
+    It uses fixed rasters for CBH, CBD, H, and fuel load, and writes the result to output_folder.
+    Returns the path of the generated ASC file.
+
+    Parameters:
+    ros_asc_path: Path to the ROS ASC file.
+    cbh_raster: Path to the ASC raster for CBH.
+    FMC: Scalar (or array) for Fuel Moisture Content.
+    cbd_raster: Path to the ASC raster for CBD.
+    h_raster: Path to the ASC raster for H.
+    fuel_load_path: Path to the ASC raster for fuel load (cfl).
+    output_folder: Output folder for the CFB raster.
     """
+
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
@@ -553,6 +578,16 @@ def generate_crown_fraction_burned(ros_asc_path, cbh_raster, FMC, cbd_raster, h_
 # Función para generar el raster de H
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def generate_h_raster():
+    """
+    Generates an ASCII raster of Heat values (H) using a lookup table and a fuel code raster.
+
+    h_csv: Path to the CSV containing pairs of heat values and fuel codes.
+    fuel_column: Name of the column containing fuel codes.
+    h_column: Name of the column containing heat values.
+    input_raster: Path to the raster containing fuel codes.
+    output_raster: Path to save the output heat raster.
+
+    """
     h_csv = "/home/ramiro/Emisiones/lookup_ramiro.csv"
     fuel_column = 'Fuel Code'
     h_column = 'h'
@@ -578,6 +613,16 @@ def generate_h_raster():
 # Función para generar el raster de CBH
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def generate_cbh_raster():
+    """
+    Generates an ASCII raster of Crown Base Height (CBH) using a lookup table and a fuel code raster.
+
+    cbh_csv: Path to the CSV containing pairs of CBH values and fuel codes.
+    fuel_column: Name of the column containing fuel codes.
+    cbh_column: Name of the column conatining CBH values.
+    input_raster: Path to the raster containing fuel codes.
+    output_raster: Path to save the output CBH raster.
+    
+    """
     cbh_csv = "/home/ramiro/Emisiones/lookup_ramiro.csv"
     fuel_column = 'Fuel Code'
     cbh_column = 'cbh'
@@ -602,6 +647,16 @@ def generate_cbh_raster():
 # Función para generar el raster de CBD
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def generate_cbd_raster():
+    """
+    Generates an ASCII raster of Crown Bulk Density (CBD) using a lookup table and a fuel code raster.
+
+    cbd_csv: Path to the CSV containing pairs of CBD values and fuel codes.
+    fuel_column: Name of the column containing fuel codes.
+    cbd_column: Name of the column containing CBD values.
+    input_raster: Path to the raster containing fuel codes.
+    output_raster: Path to save the output CBD raster.
+
+    """
     cbd_csv = "/home/ramiro/Emisiones/lookup_ramiro.csv"
     fuel_column = 'Fuel Code'
     cbd_column = 'cbd'
@@ -627,6 +682,16 @@ def generate_cbd_raster():
 # Función para generar el raster de carga de combustible en copa (cfl)
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def generate_crown_fuel_load_raster():
+    """
+    Generates an ASCII raster of crown fuel loads using a lookup table and a fuel code raster.
+
+    fuel_load_csv: Path to the CSV containing pairs of fuel loads and fuel codes.
+    fuel_column: Name of the column containing fuel codes.
+    fuel_load_column: Name of the column containing crown fuel loads.
+    input_raster: Path to the raster containing fuel codes.
+    output_raster: Path to save the output crown fuel load raster.
+
+    """
     fuel_load_csv = "/home/ramiro/Emisiones/lookup_ramiro.csv"
     fuel_column = "Fuel Code"
     fuel_load_column = "cfl"
@@ -653,9 +718,23 @@ def generate_crown_fuel_load_raster():
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def emisiones_generadas_vectorized(fuels, cfl, cfb):
     """
-    Calcula las emisiones generadas (en CO2eq) para cada píxel a partir
-    de los arrays: combustibles (fuels), carga de combustible (cfl) y
-    la fracción quemada (cfb). Se espera que todos tengan la misma dimensión.
+    Calculates the CO2 eq emisions generated by crown fire, given fuel types, crown fuel load, and crown fraction burned arrays.
+    the function is vectorized si the computation can be performed for entire arrays. The function calculates fuel consumed by 
+    multiplying crown fuel load by crown fraction burned and then calculates emissions for every greenhouse gas (GHG) using
+    specific emission factors and a unit correction factor. Finally, a weighted sum is performed to get the CO2eq emissions.
+
+    Inputs:
+    - fuels: 2D array of fuel types (integers).
+    - cfl: 2D array of crown fuel loads (floats).
+    - cfb: 2D array of crown fraction burned values (floats).
+
+    Output:
+    - emisiones: 2D array of CO2eq emissions (floats).
+
+    Sources:
+    - Gas specific emission factors: IPCC Gef.
+    - Weighted sum weights: IPCC GWP@100yr.
+
     """
     if fuels.shape != cfl.shape or fuels.shape != cfb.shape:
         raise ValueError("All input arrays must have the same dimensions.")
@@ -692,10 +771,18 @@ def emisiones_generadas_vectorized(fuels, cfl, cfb):
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def generate_emisiones_generadas_raster(fuels_raster_path, cfl_raster, cfb_raster_path, output_folder):
     """
-    Genera un raster ASC de emisiones generadas usando los rasters de combustibles, 
-    carga de combustible en copa (cfl) y fracción quemada (cfb). Guarda el resultado 
-    en output_folder con un nombre basado en el raster cfb.
-    Retorna el path del raster generado.
+    Generates an ASCII emissions raster using fuels, crown fuel load, and crown fraction burned rasters.
+    It calls the vectorized function to calculate the emissions elementwise and writes the result to output_folder.
+
+    Inputs: 
+    - fuels_raster_path: Path to the ASCII raster of fuel types.
+    - cfl_raster: Path to the ASCII raster of crown fuel loads.
+    - cfb_raster_path: Path to the ASCII raster of crown fraction burned values.
+    - output_folder: Folder to save the generated emissions ASC file.
+
+    Output:
+    - output_raster: Path to the generated emissions ASC file.
+
     """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -729,6 +816,16 @@ def generate_emisiones_generadas_raster(fuels_raster_path, cfl_raster, cfb_raste
 # Función que suma los valores de un raster (ignorando nodata)
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def sum_raster_values(raster_path):
+    """
+    Computes the sum of all valid pixel values in an ASCII grid file.
+    
+    Input:
+    - raster_path: Path to the ASCII grid file (float).
+    
+    Output:
+    - total_sum: sum of all valid pixel values in the ASCII grid file (float).
+    
+    """
     with rasterio.open(raster_path) as src:
         data = src.read(1, masked=True)
         total_sum = data.sum()
@@ -738,6 +835,16 @@ def sum_raster_values(raster_path):
 # Función que calcula el valor promedio de un raster (ignorando nodata)
 #-----------------------------------------------------------------------------------------------------------------------------------------
 def average_pixel_value(raster_path):
+    """
+    Computes the average value of all valid pixels in an Arc/Info ASCII Grid (ASC) file.
+    It uses the raster's nodata value to ignore invalid pixels.
+
+    Input:
+    - raster_path: Path to the ASCII grid file (float).
+
+    Output:
+    - average: Average value of all valid pixels in the ASCII grid file (float).
+    """
     with rasterio.open(raster_path) as src:
         data = src.read(1, masked=True)
         average = np.ma.mean(data)
