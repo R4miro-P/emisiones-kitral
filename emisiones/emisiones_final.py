@@ -24,6 +24,16 @@ import pandas as pd
 #--------------------------------------------------------------------------------------------------------------------------------
 #se crea funcion que calcula sfb a partir de Ros.
 def surface_fuel_consumed_vectorized(fuels, ros):
+    """Computes the surface fraction consumed, given a fuel type and rate of spread. It uses a diferent formula for each of
+    the four fuel categories in Kitral: Grass, Shrubs, Trees and plantation. The function is vectorized, so it can process
+    entire arrays of fuel types and ROS values at once.
+    
+    Inputs: 
+    - fuels: 2D array of fuel types (integers).
+    - Ros: 2D array of rate of spread values (floats).
+    
+    Output:
+    - 2D array of surface fraction consumed values (floats)."""
     
     #Calcula la fraccion de combustible consumido en superficie a partir de los raster de combustible y ROS
     
@@ -45,9 +55,14 @@ def surface_fuel_consumed_vectorized(fuels, ros):
 #Se crea una funcion que recibe un raster de ros y uno de cargas y calcula la fraccion consumida en superficie. Notar si ROS=0 sfb=0
 def generate_surface_fraction_burned(ros_asc_path, output_folder):
     """
-    Generates an ASCII grid for surface fraction burned (SFB) using a given ROS ASC file.
-    Uses a fixed fuels raster and writes the output to output_folder.
-    Returns the path to the generated SFB ASC file.
+    Generates ASCII grids for surface fraction burned (SFB) using a fixed fuels raster.
+    
+    Inputs:
+    - ros.asc path: Path to the ROS ASCII grid file.
+    - output_folder: Folder to save the generated SFB ASCII grids.
+    
+    Output:
+    - Path to the generated SFB ASCII grid.
     """
     fuels_raster = "/home/ramiro/on-boarding/kitral/Kitral/Portillo-asc/fuels.asc"
     
@@ -86,6 +101,13 @@ def generate_surface_fraction_burned(ros_asc_path, output_folder):
 #-----------------------------------------------------------------------------------------------------------------------------------------
 #Se crea un raster de Fuel Load en Superficie
 def generate_fuel_load_raster():
+    """ Generates an ASCII raster of fuel loads using a lookup table and a fuel code raster.
+    
+    fuel_load_csv: Path to the CSV containing pairs of fuel loads and fuel codes.
+    fuel_column: Name of the column containing fuel codes.
+    fuel_load_column: Name of the column containing fuel loads.
+    Input_raster: Path to the raster containing fuel codes.
+    output_raster: Path to save the output fuel load raster."""
 
     # 1. Read the CSV containing (fuel code -> fuel load)
     fuel_load_csv = "/home/ramiro/Emisiones/lookup_ramiro.csv"
@@ -135,9 +157,22 @@ def generate_fuel_load_raster():
 #Funcion que calcula las emisiones generadas
 def emisiones_generadas_vectorized(fuels, fuel_load, sfb):
     """
-    Calcula las emisiones generadas (en CO2eq) para cada pixel a partir
-    de los arrays: combustibles (fuels), carga de combustible (fuel_load) y
-    la fracción quemada (sfb). Se espera que todos tengan la misma dimensión.
+    Computes generated CO2eq emissions by burning, given a fuels, fuel load and surface fraction burned arrays. It calculates
+    fuel consumed by multiplying fuel load by surface fraction burned. Then calculates green house gas (GHG) emissions multiplying
+    fuel consumed by a gas specific emission factor, and a unit correction factor. Finally performs a weighted sum of the different
+    emissions to get the CO2eq. The function is vectoried so the computation can be performed for entire arrays.
+
+    Inputs:
+    - fuels: 2D array of fuel types (integers).
+    - fuel_load: 2D array of fuel loads (floats).
+    - sfb: 2D array of surface fraction burned values (floats).
+
+    Output: 
+    - 2D array of CO2eq emissions (floats).
+
+    Sources:
+    - Gas specific emission factors: IPCC Gef.
+    - Weighted sum weights: IPCC GWP@100yr.
     """
     # Optional: check that all arrays have the same shape
     if fuels.shape != fuel_load.shape or fuels.shape != sfb.shape:
@@ -183,8 +218,15 @@ def emisiones_generadas_vectorized(fuels, fuel_load, sfb):
 def generate_emisiones_generadas_raster(fuels_raster_path, fuel_load_raster, sfb_raster_path, output_folder):
     """
     Generates an ASCII emissions raster using the fuels, fuel load, and SFB rasters.
-    Saves the output ASC file to the specified output folder with a unique name.
-    Returns the path to the generated emissions ASC file.
+    
+    Inputs: 
+    - fuels_raster_path: Path to the ASCII raster of fuel types.
+    - fuel_load_raster: Path to the ASCII raster of fuel loads.
+    - sfb_rastr_path: Path to the ASCII raster of surface fraction burned values.
+    - output_folder: Folder to save the generated emissions ASC file.
+
+    Output:
+    - Output_raster: Path to the generated emissions ASC file.
     """
     # Ensure output folder exists.
     if not os.path.exists(output_folder):
@@ -225,6 +267,14 @@ def generate_emisiones_generadas_raster(fuels_raster_path, fuel_load_raster, sfb
 #-----------------------------------------------------------------------------------------------------------------------------------------
 #Se crea una funcion que suma el total de emisiones generadas.
 def sum_raster_values(raster_path):
+    """
+    Computes the sum of all valid pixel values in an ASCII grid file.
+    
+    Input:
+    - raster_path: Path to the ASCII grid file (float).
+    
+    Output:
+    - total_sum: sum of all valid pixel values in the ASCII grid file (float)."""
     
     #Suma los valores de cada pixel en un raster (ignora los nodata si estan masked).
     
@@ -238,6 +288,12 @@ def average_pixel_value(raster_path):
     """
     Computes the average value of all valid pixels in an Arc/Info ASCII Grid (ASC) file.
     It uses the raster's nodata value to ignore invalid pixels.
+
+    Input:
+    - raster_path: Path to the ASCII grid file (float).
+
+    Output:
+    - average: Average value of all valid pixels in the ASCII grid file (float).
     """
     with rasterio.open(raster_path) as src:
         # Read the first band as a masked array so that nodata values are ignored.
